@@ -66,12 +66,13 @@ askLetter = (question, defaultAnswer, letters) ->
 
 ## Code
 syncOrgs = (github) ->
+  console.log '[synchronizing organizations]'
   result = await github.get 'user/orgs'
   orgs = result.body
   for org in orgs
     if org.login not of options.orgs
       console.log()
-      console.log "NEW ORGANIZATION: #{org.login}"
+      console.log "** NEW ORGANIZATION: #{org.login}"
       answer = await askLetter \
         "Add this organization? (yes/no/quit/forget)", "no", "ynqf"
       switch answer
@@ -81,11 +82,11 @@ syncOrgs = (github) ->
             switch await isDir dir
               when true
                 useDir = await askLetter \
-                  "Directory exists; add repositories to this directory?", "no",
-                  "yn"
+                  "> Directory exists; add repositories to this directory?",
+                  "no", "yn"
                 continue if useDir == 'n'
               when false
-                console.log "That's an existing file, not a directory."
+                console.log "> That's an existing file, not a directory."
                 continue
             break
           options.orgs[org.login] =
@@ -98,11 +99,12 @@ syncOrgs = (github) ->
         #when 'n'
 
 syncRepos = (github) ->
+  console.log '[synchronizing repositories]'
   for org, orgOptions of options.orgs
     continue if orgOptions.forget
     console.log "** ORGANIZATION: #{org}"
     unless orgOptions.dir?
-      console.log "No directory information available!"
+      console.log "> No directory information available! Add 'dir' field."
       continue
     result = await github.get "orgs/#{org}/repos"
     repos = result.body
@@ -111,14 +113,14 @@ syncRepos = (github) ->
       remote = repo.ssh_url
       switch await isDir repoDir
         when false
-          console.log "Repo '#{repo.full_name}' BLOCKED by file '#{repoDir}'"
+          console.log "> Repo '#{repo.full_name}' BLOCKED by file '#{repoDir}'"
           continue
         when true
           git = child_process.spawnSync 'git',
             ['remote', 'get-url', 'origin'],
             cwd: repoDir
           if "not a git repository" in git.stderr
-            console.log "Repo '#{repo.full_name}' BLOCKED by non-git directory '#{repoDir}'"
+            console.log "> Repo '#{repo.full_name}' BLOCKED by non-git directory '#{repoDir}'"
             continue
           origin = git.stdout.toString 'ascii'
           .replace /\n$/, ''
@@ -127,7 +129,7 @@ syncRepos = (github) ->
             continue
           else
             console.log \
-              "Git repo #{shrinkTilde repoDir} has origin set to #{origin}"
+              "> Git repo #{shrinkTilde repoDir} has origin set to #{origin}"
             answer = await askLetter \
               "Set remote to #{remote}? (yes/no)", 'no', 'yn'
             if answer == 'y'
