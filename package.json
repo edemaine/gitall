@@ -3,7 +3,12 @@
   "version": "0.0.1",
   "description": "Bulk operations on Github repositories",
   "main": "gitall.js",
+  "bin": {
+    "gitall": "gitall.js"
+  },
+  "preferGlobal": true,
   "scripts": {
+    "prepare": "coffee --no-header --bare -c gitall.coffee",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Erik Demaine <edemaine@mit.edu>",

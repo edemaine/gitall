@@ -1,3 +1,5 @@
+`#!/usr/bin/env node
+`
 child_process = require 'child_process'
 fs = require 'fs'
 os = require 'os'
