@@ -64,9 +64,12 @@ askLetter = (question, defaultAnswer, letters) ->
     if letter in letters
       return letter
 
+runOK = (spawnOut) ->
+  if spawnOut.status != 0
+    throw "> git failed -- aborting"
+
 ## Code
 syncOrgs = (github) ->
-  console.log '[synchronizing organizations]'
   result = await github.get 'user/orgs'
   orgs = result.body
   for org in orgs
@@ -99,7 +102,6 @@ syncOrgs = (github) ->
         #when 'n'
 
 syncRepos = (github) ->
-  console.log '[synchronizing repositories]'
   for org, orgOptions of options.orgs
     continue if orgOptions.forget
     console.log "** ORGANIZATION: #{org}"
@@ -124,23 +126,26 @@ syncRepos = (github) ->
             continue
           origin = git.stdout.toString 'ascii'
           .replace /\n$/, ''
-          if origin == remote
-            ## Repository already exists and points to the right place
-            continue
-          else
+          if origin != remote
             console.log \
               "> Git repo #{shrinkTilde repoDir} has origin set to #{origin}"
             answer = await askLetter \
               "Set remote to #{remote}? (yes/no)", 'no', 'yn'
             if answer == 'y'
-              child_process.spawnSync 'git',
+              runOK child_process.spawnSync 'git',
                 ['remote', 'set-url', 'origin', remote],
                 cwd: repoDir
                 stdio: 'inherit'
-            continue
-      child_process.spawnSync 'git',
-        ['clone', remote, repoDir],
-        stdio: 'inherit'
+        when null
+          runOK child_process.spawnSync 'git',
+            ['clone', remote, repoDir],
+            stdio: 'inherit'
+
+      if process.argv.length > 2
+        console.log "#{shrinkTilde repoDir}$ git #{process.argv[2..].join ' '}"
+        runOK child_process.spawnSync 'git', process.argv[2..],
+          cwd: repoDir
+          stdio: 'inherit'
 
 syncAccount = (github) ->
   await syncOrgs github
