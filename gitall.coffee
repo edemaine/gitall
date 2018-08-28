@@ -119,7 +119,7 @@ syncRepos = (github) ->
           git = child_process.spawnSync 'git',
             ['remote', 'get-url', 'origin'],
             cwd: repoDir
-          if "not a git repository" in git.stderr
+          if "not a git repository" in git.stderr.toString 'ascii'
             console.log "> Repo '#{repo.full_name}' BLOCKED by non-git directory '#{repoDir}'"
             continue
           origin = git.stdout.toString 'ascii'
