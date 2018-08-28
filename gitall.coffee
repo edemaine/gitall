@@ -1,3 +1,4 @@
+child_process = require 'child_process'
 fs = require 'fs'
 os = require 'os'
 path = require 'path'
@@ -54,7 +55,7 @@ askLetter = (question, defaultAnswer, letters) ->
 
 ## Code
 syncOrgs = (github) ->
-  result = await github.request 'GET', 'user/orgs'
+  result = await github.get 'user/orgs'
   orgs = result.body
   for org in orgs
     if org.login not of options.orgs
@@ -86,6 +87,47 @@ syncOrgs = (github) ->
         #when 'n'
 
 syncRepos = (github) ->
+  for org, orgOptions of options.orgs
+    continue if orgOptions.forget
+    console.log "** ORGANIZATION: #{org}"
+    unless orgOptions.dir?
+      console.log "No directory information available!"
+      continue
+    result = await github.get "orgs/#{org}/repos"
+    repos = result.body
+    for repo in repos
+      repoDir = path.join dir2dir(orgOptions.dir), repo.name
+      remote = repo.ssh_url
+      switch await isDir repoDir
+        when false
+          console.log "Repo '#{repo.full_name}' BLOCKED by file '#{repoDir}'"
+          continue
+        when true
+          git = child_process.spawnSync 'git',
+            ['remote', 'get-url', 'origin'],
+            cwd: repoDir
+          if "not a git repository" in git.stderr
+            console.log "Repo '#{repo.full_name}' BLOCKED by non-git directory '#{repoDir}'"
+            continue
+          origin = git.stdout.toString 'ascii'
+          .replace /\n$/, ''
+          if origin == remote
+            ## Repository already exists and points to the right place
+            continue
+          else
+            answer = await askLetter \
+              "'#{remote}' is not the remote for '#{repoDir}' " +
+              "(currently '#{origin}'). " +
+              "Set remote? (yes/no)", 'no', 'yn'
+            if answer == 'y'
+              child_process.spawnSync 'git',
+                ['remote', 'set-url', 'origin', remote],
+                cwd: repoDir
+                stdio: 'inherit'
+            continue
+      child_process.spawnSync 'git',
+        ['clone', remote, repoDir],
+        stdio: 'inherit'
 
 syncAccount = (github) ->
   await syncOrgs github
