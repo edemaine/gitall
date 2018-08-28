@@ -22,6 +22,15 @@ host2apiurl = (host) ->
   else
     "https://#{host}/api/v3/"
 
+dir2dir = (dir) ->
+  dir.replace /^~([\/\\]|$)/, (match, end) -> os.homedir() + end
+isDir = (dir) ->
+  try
+    stat = await util.promisify(fs.stat) dir2dir dir
+  catch e
+    return null
+  stat.isDirectory()
+
 ## Interactivity
 rl = readline.createInterface
   input: process.stdin
@@ -39,40 +48,57 @@ askLetter = (question, defaultAnswer, letters) ->
       return letter
 
 ## Code
-syncOrgs = ->
+syncOrgs = (github) ->
+  result = await github.request 'GET', 'user/orgs'
+  orgs = result.body
+  for org in orgs
+    if org.login not of options.orgs
+      console.log()
+      console.log "NEW ORGANIZATION: #{org.login}"
+      answer = await askLetter \
+        "Add this organization? (yes/no/quit/forget)", "no", "ynqf"
+      switch answer
+        when 'y'
+          loop
+            dir = await ask "Directory for organization:", "~/#{org.login}"
+            switch await isDir dir
+              when true
+                useDir = await askLetter \
+                  "Directory exists; add repositories to this directory?", "no",
+                  "yn"
+                continue if useDir == 'n'
+              when false
+                console.log "That's an existing file, not a directory."
+                continue
+            break
+          options.orgs[org.login] =
+            dir: dir
+        when 'f'
+          options.orgs[org.login] =
+            forget: true
+        when 'q'
+          return
+        #when 'n'
+
+syncRepos = (github) ->
+
+syncAccount = (github) ->
+  await syncOrgs github
+  await syncRepos github
+
+syncAccounts = ->
   for account in options.accounts
     github = new GitHub
       apiurl: host2apiurl account.host
       token: account.token
-    console.log 'request'
-    result = await github.request 'GET', 'user/orgs'
-    orgs = result.body
-    for org in orgs
-      if org.login not of options.orgs
-        console.log "NEW ORGANIZATION: #{org.login}"
-        answer = await askLetter \
-          "Add this organization? (yes/no/quit/forget)", "no", "ynqf"
-        switch answer
-          when 'y'
-            console.log org
-            dir = await ask "Directory for organization:", "~"
-            options.orgs[org.login] =
-              dir: dir
-          when 'f'
-            options.orgs[org.login] =
-              forget: true
-          when 'q'
-            return
-          #when 'n'
+    await syncAccount github
 
-sync = ->
-  await syncOrgs()
   if (s = stringify options) != optionsText
-    console.log
+    console.log()
     console.log s
     answer = await askLetter \
       "Save changes to #{path.basename optionsFilename}? (yes/no)", "no", "yn"
     if answer == 'y'
       await util.promisify(fs.writeFile) optionsFilename, s
 
-sync().then -> process.exit()
+syncAccounts().then -> process.exit()
