@@ -40,15 +40,18 @@ isDir = (dir) ->
 
 ## Interactivity
 rl = null
+rlReject = null
 ask = (question, defaultAnswer) ->
-  rl ?= readline.createInterface
-    input: process.stdin
-    output: process.stdout
-  new Promise (resolve, reject) ->
+  unless rl?
+    rl = readline.createInterface
+      input: process.stdin
+      output: process.stdout
     rl.on 'close', (error) ->
       console.log()
       rl = null
-      reject 'Ctrl-C'
+      rlReject 'Ctrl-C'
+  new Promise (resolve, reject) ->
+    rlReject = reject
     rl.question "#{question} [#{defaultAnswer}] ", (answer) ->
       answer = defaultAnswer if answer == ''
       resolve answer
