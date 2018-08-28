@@ -2,6 +2,20 @@
   "name": "gitall",
   "version": "0.0.1",
   "description": "Bulk operations on Github repositories",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/edemaine/gitall.git"
+  },
+  "bugs": {
+    "url": "https://github.com/edemaine/gitall/issues"
+  },
+  "homepage": "https://github.com/edemaine/gitall",
+  "author": {
+    "name": "Erik Demaine",
+    "email": "edemaine@mit.edu",
+    "url": "http://erikdemaine.org/"
+  },
+  "license": "MIT",
   "main": "gitall.js",
   "bin": {
     "gitall": "gitall.js"
@@ -11,8 +25,6 @@
     "prepare": "coffee --no-header --bare -c gitall.coffee",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "Erik Demaine <edemaine@mit.edu>",
-  "license": "MIT",
   "dependencies": {
     "github-base": "^1.0.0"
   },
