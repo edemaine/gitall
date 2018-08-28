@@ -1,0 +1,17 @@
+{
+  "name": "gitall",
+  "version": "0.0.1",
+  "description": "Bulk operations on Github repositories",
+  "main": "gitall.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Erik Demaine <edemaine@mit.edu>",
+  "license": "MIT",
+  "dependencies": {
+    "github-base": "^1.0.0"
+  },
+  "devDependencies": {
+    "coffeescript": "^2.3.1"
+  }
+}
