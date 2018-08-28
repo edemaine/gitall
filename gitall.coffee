@@ -104,6 +104,7 @@ syncOrgs = (github) ->
 syncRepos = (github) ->
   for org, orgOptions of options.orgs
     continue if orgOptions.forget
+    console.log()
     console.log "** ORGANIZATION: #{org}"
     unless orgOptions.dir?
       console.log "> No directory information available! Add 'dir' field."
@@ -147,21 +148,23 @@ syncRepos = (github) ->
           cwd: repoDir
           stdio: 'inherit'
 
-syncAccount = (github) ->
-  await syncOrgs github
-  await syncRepos github
+allAccounts = (todo) ->
+  for account in options.accounts
+    github = new GitHub
+      apiurl: host2apiurl account.host
+      token: account.token
+    await todo github
 
 syncAccounts = ->
   try
-    for account in options.accounts
-      github = new GitHub
-        apiurl: host2apiurl account.host
-        token: account.token
-      await syncAccount github
+    await allAccounts syncOrgs
   catch e
-    if e != "Ctrl-C"
+    if e == "Ctrl-C"
+      return await saveOptions()
+    else
       throw e
   await saveOptions()
+  await allAccounts syncRepos
 
 saveOptions = ->
   return unless options? and optionsText?
@@ -179,5 +182,9 @@ saveOptions = ->
     if answer == 'y'
       await util.promisify(fs.writeFile) optionsFilename, s
 
-syncAccounts().then -> rl?.close()
-.catch (e) -> throw e
+syncAccounts().then ->
+  rl?.close()
+,
+  (e) ->
+    console.log e.toString()
+    rl?.close()
