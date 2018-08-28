@@ -23,11 +23,17 @@ host2apiurl = (host) ->
   else
     "https://#{host}/api/v3/"
 
-dir2dir = (dir) ->
+expandTilde = (dir) ->
   dir.replace /^~([\/\\]|$)/, (match, end) -> os.homedir() + end
+shrinkTilde = (dir) ->
+  home = os.homedir()
+  if dir[...home.length] == home
+    "~" + dir[home.length..]
+  else
+    dir
 isDir = (dir) ->
   try
-    stat = await util.promisify(fs.stat) dir2dir dir
+    stat = await util.promisify(fs.stat) expandTilde dir
   catch e
     return null
   stat.isDirectory()
@@ -96,7 +102,7 @@ syncRepos = (github) ->
     result = await github.get "orgs/#{org}/repos"
     repos = result.body
     for repo in repos
-      repoDir = path.join dir2dir(orgOptions.dir), repo.name
+      repoDir = path.join expandTilde(orgOptions.dir), repo.name
       remote = repo.ssh_url
       switch await isDir repoDir
         when false
@@ -115,10 +121,10 @@ syncRepos = (github) ->
             ## Repository already exists and points to the right place
             continue
           else
+            console.log \
+              "Git repo #{shrinkTilde repoDir} has origin set to #{origin}"
             answer = await askLetter \
-              "'#{remote}' is not the remote for '#{repoDir}' " +
-              "(currently '#{origin}'). " +
-              "Set remote? (yes/no)", 'no', 'yn'
+              "Set remote to #{remote}? (yes/no)", 'no', 'yn'
             if answer == 'y'
               child_process.spawnSync 'git',
                 ['remote', 'set-url', 'origin', remote],
