@@ -32,11 +32,16 @@ isDir = (dir) ->
   stat.isDirectory()
 
 ## Interactivity
-rl = readline.createInterface
-  input: process.stdin
-  output: process.stdout
+rl = null
 ask = (question, defaultAnswer) ->
-  new Promise (resolve) ->
+  rl ?= readline.createInterface
+    input: process.stdin
+    output: process.stdout
+  new Promise (resolve, reject) ->
+    rl.on 'close', (error) ->
+      console.log()
+      rl = null
+      reject 'Ctrl-C'
     rl.question "#{question} [#{defaultAnswer}] ", (answer) ->
       answer = defaultAnswer if answer == ''
       resolve answer
@@ -87,18 +92,32 @@ syncAccount = (github) ->
   await syncRepos github
 
 syncAccounts = ->
-  for account in options.accounts
-    github = new GitHub
-      apiurl: host2apiurl account.host
-      token: account.token
-    await syncAccount github
+  try
+    for account in options.accounts
+      github = new GitHub
+        apiurl: host2apiurl account.host
+        token: account.token
+      await syncAccount github
+  catch e
+    if e != "Ctrl-C"
+      throw e
+  await saveOptions()
 
+saveOptions = ->
+  return unless options? and optionsText?
   if (s = stringify options) != optionsText
     console.log()
     console.log s
-    answer = await askLetter \
-      "Save changes to #{path.basename optionsFilename}? (yes/no)", "no", "yn"
+    try
+      answer = await askLetter \
+        "Save changes to #{path.basename optionsFilename}? (yes/no)", "no", "yn"
+    catch e
+      if e == "Ctrl-C"
+        return
+      else
+        throw e
     if answer == 'y'
       await util.promisify(fs.writeFile) optionsFilename, s
 
-syncAccounts().then -> process.exit()
+syncAccounts().then -> rl?.close()
+.catch (e) -> throw e
