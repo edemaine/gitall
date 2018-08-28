@@ -66,7 +66,10 @@ askLetter = (question, defaultAnswer, letters) ->
 
 runOK = (spawnOut) ->
   if spawnOut.status != 0
-    throw "> git failed -- aborting"
+    console.log "> git failed"
+    answer = await askLetter "Continue? (yes/no)", "no", "yn"
+    if answer == 'n'
+      throw "> Aborting"
 
 ## Code
 syncOrgs = (github) ->
@@ -133,18 +136,18 @@ syncRepos = (github) ->
             answer = await askLetter \
               "Set remote to #{remote}? (yes/no)", 'no', 'yn'
             if answer == 'y'
-              runOK child_process.spawnSync 'git',
+              await runOK child_process.spawnSync 'git',
                 ['remote', 'set-url', 'origin', remote],
                 cwd: repoDir
                 stdio: 'inherit'
         when null
-          runOK child_process.spawnSync 'git',
+          await runOK child_process.spawnSync 'git',
             ['clone', remote, repoDir],
             stdio: 'inherit'
 
       if process.argv.length > 2
         console.log "#{shrinkTilde repoDir}$ git #{process.argv[2..].join ' '}"
-        runOK child_process.spawnSync 'git', process.argv[2..],
+        await runOK child_process.spawnSync 'git', process.argv[2..],
           cwd: repoDir
           stdio: 'inherit'
 
