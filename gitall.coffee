@@ -75,6 +75,7 @@ runOK = (spawnOut) ->
 syncOrgs = (github) ->
   result = await github.get 'user/orgs'
   orgs = result.body
+  lastDirRoot = '~'
   for org in orgs
     if org.login not of options.orgs
       console.log()
@@ -84,7 +85,8 @@ syncOrgs = (github) ->
       switch answer
         when 'y'
           loop
-            dir = await ask "Directory for organization:", "~/#{org.login}"
+            dir = await ask "Directory for organization:",
+              "#{lastDirRoot}/#{org.login}"
             switch await isDir dir
               when true
                 useDir = await askLetter \
@@ -97,6 +99,7 @@ syncOrgs = (github) ->
             break
           options.orgs[org.login] =
             dir: dir
+          lastDirRoot = path.dirname dir
         when 'f'
           options.orgs[org.login] =
             forget: true
