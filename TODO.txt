@@ -1,3 +1,0 @@
-* Restrict to org/repo when in that directory
-* Instead of assuming settings are in home directory, walk up to find it,
-  so it works in ~/csail
